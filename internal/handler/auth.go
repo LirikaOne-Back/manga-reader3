@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -18,11 +19,11 @@ type AuthHandler struct {
 
 // AuthService интерфейс сервиса аутентификации
 type AuthService interface {
-	Register(ctx gin.Context, input domain.UserSignup) (domain.User, error)
-	Login(ctx gin.Context, input domain.UserLogin) (domain.TokenResponse, error)
-	RefreshToken(ctx gin.Context, refreshToken string) (domain.TokenResponse, error)
-	Logout(ctx gin.Context, userID int) error
-	ChangePassword(ctx gin.Context, userID int, oldPassword, newPassword string) error
+	Register(ctx context.Context, input domain.UserSignup) (domain.User, error)
+	Login(ctx context.Context, input domain.UserLogin) (domain.TokenResponse, error)
+	RefreshToken(ctx context.Context, refreshToken string) (domain.TokenResponse, error)
+	Logout(ctx context.Context, userID int) error
+	ChangePassword(ctx context.Context, userID int, oldPassword, newPassword string) error
 	ValidateToken(tokenString string) (*service.JWTClaims, error)
 }
 
@@ -66,7 +67,7 @@ func (h *AuthHandler) signup(c *gin.Context) {
 		return
 	}
 
-	user, err := h.authService.Register(*c, input)
+	user, err := h.authService.Register(c.Request.Context(), input)
 	if err != nil {
 		h.logger.Error("failed to register user", "error", err)
 
@@ -112,7 +113,7 @@ func (h *AuthHandler) login(c *gin.Context) {
 		return
 	}
 
-	tokenResponse, err := h.authService.Login(*c, input)
+	tokenResponse, err := h.authService.Login(c.Request.Context(), input)
 	if err != nil {
 		h.logger.Error("login failed", "error", err)
 		c.JSON(http.StatusUnauthorized, ErrorResponse{Message: "Invalid username or password"})
@@ -144,7 +145,7 @@ func (h *AuthHandler) refresh(c *gin.Context) {
 		return
 	}
 
-	tokenResponse, err := h.authService.RefreshToken(*c, input.RefreshToken)
+	tokenResponse, err := h.authService.RefreshToken(c.Request.Context(), input.RefreshToken)
 	if err != nil {
 		h.logger.Error("token refresh failed", "error", err)
 		c.JSON(http.StatusUnauthorized, ErrorResponse{Message: "Invalid refresh token"})
@@ -172,7 +173,7 @@ func (h *AuthHandler) logout(c *gin.Context) {
 		return
 	}
 
-	err := h.authService.Logout(*c, userID)
+	err := h.authService.Logout(c.Request.Context(), userID)
 	if err != nil {
 		h.logger.Error("logout failed", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to logout: " + err.Error()})
@@ -212,7 +213,7 @@ func (h *AuthHandler) changePassword(c *gin.Context) {
 		return
 	}
 
-	err := h.authService.ChangePassword(*c, userID, input.OldPassword, input.NewPassword)
+	err := h.authService.ChangePassword(c.Request.Context(), userID, input.OldPassword, input.NewPassword)
 	if err != nil {
 		h.logger.Error("password change failed", "error", err)
 
@@ -281,7 +282,7 @@ func (h *AuthHandler) authMiddleware() gin.HandlerFunc {
 		c.Set("user_role", claims.Role)
 
 		// Также можно добавить полную информацию о пользователе, если это требуется
-		// user, err := h.userService.GetByID(*c, claims.UserID)
+		// user, err := h.userService.GetByID(c.Request.Context(), claims.UserID)
 		// if err == nil {
 		//     c.Set("user", user)
 		// }

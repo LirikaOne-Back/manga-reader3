@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -18,14 +19,14 @@ type ChapterHandler struct {
 
 // ChapterService интерфейс сервиса глав
 type ChapterService interface {
-	GetByMangaID(ctx gin.Context, mangaID int) ([]domain.Chapter, error)
-	GetByID(ctx gin.Context, id int) (domain.Chapter, error)
-	Create(ctx gin.Context, chapter domain.Chapter) (int, error)
-	Update(ctx gin.Context, chapter domain.Chapter) error
-	Delete(ctx gin.Context, id int) error
-	GetPages(ctx gin.Context, chapterID int) ([]domain.Page, error)
-	AddPage(ctx gin.Context, page domain.Page, imageData []byte) (int, error)
-	DeletePage(ctx gin.Context, id int) error
+	GetByMangaID(ctx context.Context, mangaID int) ([]domain.Chapter, error)
+	GetByID(ctx context.Context, id int) (domain.Chapter, error)
+	Create(ctx context.Context, chapter domain.Chapter) (int, error)
+	Update(ctx context.Context, chapter domain.Chapter) error
+	Delete(ctx context.Context, id int) error
+	GetPages(ctx context.Context, chapterID int) ([]domain.Page, error)
+	AddPage(ctx context.Context, page domain.Page, imageData []byte) (int, error)
+	DeletePage(ctx context.Context, id int) error
 }
 
 // NewChapterHandler создает новый экземпляр ChapterHandler
@@ -73,7 +74,7 @@ func (h *ChapterHandler) getChaptersByManga(c *gin.Context) {
 		return
 	}
 
-	chapters, err := h.chapterService.GetByMangaID(*c, mangaID)
+	chapters, err := h.chapterService.GetByMangaID(c.Request.Context(), mangaID)
 	if err != nil {
 		h.logger.Error("failed to get chapters", "manga_id", mangaID, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to get chapters: " + err.Error()})
@@ -108,7 +109,7 @@ func (h *ChapterHandler) getChapterByID(c *gin.Context) {
 		return
 	}
 
-	chapter, err := h.chapterService.GetByID(*c, id)
+	chapter, err := h.chapterService.GetByID(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Error("failed to get chapter", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, ErrorResponse{Message: "Chapter not found: " + err.Error()})
@@ -140,7 +141,7 @@ func (h *ChapterHandler) createChapter(c *gin.Context) {
 		return
 	}
 
-	id, err := h.chapterService.Create(*c, chapter)
+	id, err := h.chapterService.Create(c.Request.Context(), chapter)
 	if err != nil {
 		h.logger.Error("failed to create chapter", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to create chapter: " + err.Error()})
@@ -187,7 +188,7 @@ func (h *ChapterHandler) updateChapter(c *gin.Context) {
 	// Устанавливаем ID из URL
 	chapter.ID = id
 
-	err = h.chapterService.Update(*c, chapter)
+	err = h.chapterService.Update(c.Request.Context(), chapter)
 	if err != nil {
 		h.logger.Error("failed to update chapter", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to update chapter: " + err.Error()})
@@ -222,7 +223,7 @@ func (h *ChapterHandler) deleteChapter(c *gin.Context) {
 		return
 	}
 
-	err = h.chapterService.Delete(*c, id)
+	err = h.chapterService.Delete(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Error("failed to delete chapter", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to delete chapter: " + err.Error()})
@@ -254,7 +255,7 @@ func (h *ChapterHandler) getChapterPages(c *gin.Context) {
 		return
 	}
 
-	pages, err := h.chapterService.GetPages(*c, id)
+	pages, err := h.chapterService.GetPages(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Error("failed to get pages", "chapter_id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to get pages: " + err.Error()})
@@ -352,7 +353,7 @@ func (h *ChapterHandler) addChapterPage(c *gin.Context) {
 		Number:    number,
 	}
 
-	id, err := h.chapterService.AddPage(*c, page, imageData)
+	id, err := h.chapterService.AddPage(c.Request.Context(), page, imageData)
 	if err != nil {
 		h.logger.Error("failed to add page", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to add page: " + err.Error()})
@@ -388,7 +389,7 @@ func (h *ChapterHandler) deleteChapterPage(c *gin.Context) {
 		return
 	}
 
-	err = h.chapterService.DeletePage(*c, pageID)
+	err = h.chapterService.DeletePage(c.Request.Context(), pageID)
 	if err != nil {
 		h.logger.Error("failed to delete page", "id", pageID, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to delete page: " + err.Error()})

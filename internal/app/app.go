@@ -17,7 +17,7 @@ import (
 	"github.com/LirikaOne-Back/manga-reader3/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq" // Драйвер PostgreSQL
+	_ "github.com/lib/pq" // Импорт драйвера PostgreSQL
 	"github.com/redis/go-redis/v9"
 )
 

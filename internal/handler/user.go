@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/LirikaOne-Back/manga-reader3/internal/domain"
+	"github.com/LirikaOne-Back/manga-reader3/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,14 +21,14 @@ type UserHandler struct {
 
 // UserService интерфейс сервиса пользователей
 type UserService interface {
-	GetByID(ctx gin.Context, id int) (domain.User, error)
-	Update(ctx gin.Context, user domain.User) error
-	Delete(ctx gin.Context, id int) error
-	AddBookmark(ctx gin.Context, userID, mangaID int) error
-	RemoveBookmark(ctx gin.Context, userID, mangaID int) error
-	GetBookmarks(ctx gin.Context, userID int) ([]domain.Manga, error)
-	SaveReadHistory(ctx gin.Context, history domain.ReadHistory) error
-	GetReadHistory(ctx gin.Context, userID int) ([]domain.ReadHistory, error)
+	GetByID(ctx context.Context, id int) (domain.User, error)
+	Update(ctx context.Context, user domain.User) error
+	Delete(ctx context.Context, id int) error
+	AddBookmark(ctx context.Context, userID, mangaID int) error
+	RemoveBookmark(ctx context.Context, userID, mangaID int) error
+	GetBookmarks(ctx context.Context, userID int) ([]domain.Manga, error)
+	SaveReadHistory(ctx context.Context, history domain.ReadHistory) error
+	GetReadHistory(ctx context.Context, userID int) ([]domain.ReadHistory, error)
 }
 
 // NewUserHandler создает новый экземпляр UserHandler
@@ -92,7 +94,7 @@ func (h *UserHandler) getUserProfile(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	id := userID.(int)
 
-	user, err := h.userService.GetByID(*c, id)
+	user, err := h.userService.GetByID(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Error("failed to get user profile", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to get user profile: " + err.Error()})
@@ -130,7 +132,7 @@ func (h *UserHandler) updateUserProfile(c *gin.Context) {
 	user.ID = id
 
 	// Проверяем, не пытается ли пользователь изменить свою роль
-	currentUser, err := h.userService.GetByID(*c, id)
+	currentUser, err := h.userService.GetByID(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Error("failed to get current user", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to get current user: " + err.Error()})
@@ -140,7 +142,7 @@ func (h *UserHandler) updateUserProfile(c *gin.Context) {
 	// Сохраняем текущую роль
 	user.Role = currentUser.Role
 
-	err = h.userService.Update(*c, user)
+	err = h.userService.Update(c.Request.Context(), user)
 	if err != nil {
 		h.logger.Error("failed to update user profile", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to update user profile: " + err.Error()})
@@ -167,7 +169,7 @@ func (h *UserHandler) deleteUserProfile(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	id := userID.(int)
 
-	err := h.userService.Delete(*c, id)
+	err := h.userService.Delete(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Error("failed to delete user profile", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to delete user profile: " + err.Error()})
@@ -194,7 +196,7 @@ func (h *UserHandler) getUserBookmarks(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	id := userID.(int)
 
-	bookmarks, err := h.userService.GetBookmarks(*c, id)
+	bookmarks, err := h.userService.GetBookmarks(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Error("failed to get user bookmarks", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to get user bookmarks: " + err.Error()})
@@ -228,7 +230,7 @@ func (h *UserHandler) addUserBookmark(c *gin.Context) {
 		return
 	}
 
-	err = h.userService.AddBookmark(*c, id, mangaID)
+	err = h.userService.AddBookmark(c.Request.Context(), id, mangaID)
 	if err != nil {
 		h.logger.Error("failed to add bookmark", "user_id", id, "manga_id", mangaID, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to add bookmark: " + err.Error()})
@@ -264,7 +266,7 @@ func (h *UserHandler) removeUserBookmark(c *gin.Context) {
 		return
 	}
 
-	err = h.userService.RemoveBookmark(*c, id, mangaID)
+	err = h.userService.RemoveBookmark(c.Request.Context(), id, mangaID)
 	if err != nil {
 		h.logger.Error("failed to remove bookmark", "user_id", id, "manga_id", mangaID, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to remove bookmark: " + err.Error()})
@@ -291,7 +293,7 @@ func (h *UserHandler) getUserReadHistory(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	id := userID.(int)
 
-	history, err := h.userService.GetReadHistory(*c, id)
+	history, err := h.userService.GetReadHistory(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Error("failed to get read history", "user_id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to get read history: " + err.Error()})
@@ -329,7 +331,7 @@ func (h *UserHandler) saveUserReadHistory(c *gin.Context) {
 	history.UserID = id
 	history.ReadAt = Now()
 
-	err := h.userService.SaveReadHistory(*c, history)
+	err := h.userService.SaveReadHistory(c.Request.Context(), history)
 	if err != nil {
 		h.logger.Error("failed to save read history", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to save read history: " + err.Error()})
@@ -364,7 +366,7 @@ func (h *UserHandler) getUserByID(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.GetByID(*c, id)
+	user, err := h.userService.GetByID(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Error("failed to get user", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, ErrorResponse{Message: "User not found: " + err.Error()})
@@ -408,7 +410,7 @@ func (h *UserHandler) updateUser(c *gin.Context) {
 	// Устанавливаем ID из URL
 	user.ID = id
 
-	err = h.userService.Update(*c, user)
+	err = h.userService.Update(c.Request.Context(), user)
 	if err != nil {
 		h.logger.Error("failed to update user", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to update user: " + err.Error()})
@@ -443,7 +445,7 @@ func (h *UserHandler) deleteUser(c *gin.Context) {
 		return
 	}
 
-	err = h.userService.Delete(*c, id)
+	err = h.userService.Delete(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Error("failed to delete user", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to delete user: " + err.Error()})

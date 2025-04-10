@@ -1,6 +1,8 @@
+// Исправленный интерфейс в файле internal/handler/manga.go
 package handler
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -17,12 +19,12 @@ type MangaHandler struct {
 
 // MangaService интерфейс сервиса манги
 type MangaService interface {
-	GetAll(ctx gin.Context, filter domain.MangaFilter) ([]domain.Manga, int, error)
-	GetByID(ctx gin.Context, id int) (domain.Manga, error)
-	Create(ctx gin.Context, manga domain.Manga) (int, error)
-	Update(ctx gin.Context, manga domain.Manga) error
-	Delete(ctx gin.Context, id int) error
-	GetGenres(ctx gin.Context) ([]domain.Genre, error)
+	GetAll(ctx context.Context, filter domain.MangaFilter) ([]domain.Manga, int, error)
+	GetByID(ctx context.Context, id int) (domain.Manga, error)
+	Create(ctx context.Context, manga domain.Manga) (int, error)
+	Update(ctx context.Context, manga domain.Manga) error
+	Delete(ctx context.Context, id int) error
+	GetGenres(ctx context.Context) ([]domain.Genre, error)
 }
 
 // NewMangaHandler создает новый экземпляр MangaHandler
@@ -89,7 +91,7 @@ func (h *MangaHandler) getAllManga(c *gin.Context) {
 	filter.PageSize = pageSize
 
 	// Получаем данные от сервиса
-	mangas, total, err := h.mangaService.GetAll(*c, filter)
+	mangas, total, err := h.mangaService.GetAll(c.Request.Context(), filter)
 	if err != nil {
 		h.logger.Error("failed to get manga list", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to get manga list"})
@@ -125,7 +127,7 @@ func (h *MangaHandler) getMangaByID(c *gin.Context) {
 		return
 	}
 
-	manga, err := h.mangaService.GetByID(*c, id)
+	manga, err := h.mangaService.GetByID(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Error("failed to get manga", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, ErrorResponse{Message: "Manga not found"})
@@ -156,7 +158,7 @@ func (h *MangaHandler) createManga(c *gin.Context) {
 		return
 	}
 
-	id, err := h.mangaService.Create(*c, manga)
+	id, err := h.mangaService.Create(c.Request.Context(), manga)
 	if err != nil {
 		h.logger.Error("failed to create manga", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to create manga: " + err.Error()})
@@ -198,7 +200,7 @@ func (h *MangaHandler) updateManga(c *gin.Context) {
 	// Устанавливаем ID из URL
 	manga.ID = id
 
-	err = h.mangaService.Update(*c, manga)
+	err = h.mangaService.Update(c.Request.Context(), manga)
 	if err != nil {
 		h.logger.Error("failed to update manga", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to update manga: " + err.Error()})
@@ -229,7 +231,7 @@ func (h *MangaHandler) deleteManga(c *gin.Context) {
 		return
 	}
 
-	err = h.mangaService.Delete(*c, id)
+	err = h.mangaService.Delete(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Error("failed to delete manga", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to delete manga: " + err.Error()})
@@ -249,7 +251,7 @@ func (h *MangaHandler) deleteManga(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/manga/genres [get]
 func (h *MangaHandler) getGenres(c *gin.Context) {
-	genres, err := h.mangaService.GetGenres(*c)
+	genres, err := h.mangaService.GetGenres(c.Request.Context())
 	if err != nil {
 		h.logger.Error("failed to get genres", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to get genres"})
@@ -257,9 +259,4 @@ func (h *MangaHandler) getGenres(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, genres)
-}
-
-// ErrorResponse стандартный формат ответа с ошибкой
-type ErrorResponse struct {
-	Message string `json:"message"`
 }

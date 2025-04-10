@@ -3,24 +3,23 @@ FROM golang:1.22-alpine AS builder
 WORKDIR /app
 
 # Устанавливаем необходимые зависимости
-RUN apk --no-cache add ca-certificates git tzdata
+RUN apk --no-cache add ca-certificates git tzdata gcc musl-dev
 
 # Настройка прямой загрузки модулей
-ENV GOPROXY=direct,https://proxy.golang.org
+ENV GOPROXY=https://proxy.golang.org,direct
 ENV GO111MODULE=on
 ENV GOSUMDB=off
 
 # Копируем Go модули
 COPY go.mod go.sum ./
 
-# Принудительно пропускаем верификацию и загрузку модулей
-# (поскольку у нас уже есть go.sum)
-RUN go mod verify || echo "Verification skipped"
+# Принудительно пропускаем верификацию
+RUN go mod tidy -v
 
 # Копируем исходный код
-COPY backend .
+COPY . .
 
-# Собираем приложение
+# Собираем приложение, пропуская ошибки зависимостей
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=mod -ldflags="-s -w" -o manga-reader ./cmd/api/main.go
 
 # Создаем минимальный образ для запуска

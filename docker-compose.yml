@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "8089:8080"  # API доступен на порту 8089
     volumes:
       - ./data/images:/app/data/images
     depends_on:
@@ -17,7 +17,9 @@ services:
       - .env
     environment:
       - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432  # Используем стандартный порт PostgreSQL внутри контейнера
       - REDIS_HOST=redis
+      - REDIS_PORT=6379  # Используем стандартный порт Redis внутри контейнера
     restart: unless-stopped
     networks:
       - manga-network
@@ -29,7 +31,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "5432:5432"
+      - "5433:5432"  # Снаружи на 5433, внутри на 5432
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -49,8 +51,13 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+      - "6389:6379"  # Снаружи на 6389, внутри на 6379
+    command: >
+      sh -c "if [ ! -z \"$${REDIS_PASSWORD}\" ]; then 
+             redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}; 
+             else 
+             redis-server --appendonly yes; 
+             fi"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
